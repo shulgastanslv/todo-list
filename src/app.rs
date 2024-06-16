@@ -1,25 +1,22 @@
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
+pub struct TodoApp {
     // Example stuff:
-    label: String,
-
-    #[serde(skip)] // This how you opt-out of serialization of a field
-    value: f32,
+    tasks: Vec<String>,
+    input: String,
 }
 
-impl Default for TemplateApp {
+impl Default for TodoApp {
     fn default() -> Self {
         Self {
-            // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
+            tasks: Vec::new(),
+            input: String::new(),
         }
     }
 }
 
-impl TemplateApp {
+impl TodoApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
@@ -35,7 +32,7 @@ impl TemplateApp {
     }
 }
 
-impl eframe::App for TemplateApp {
+impl eframe::App for TodoApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
@@ -66,26 +63,42 @@ impl eframe::App for TemplateApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
 
+            egui::CentralPanel::default().show(ctx, |ui| {
+
+            ui.heading("ToDo List");
+              
             ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut self.label);
+                let text_edit = egui::TextEdit::singleline(&mut self.input)
+                    .desired_width(400.0); // Устанавливаем ширину TextEdit
+
+                ui.add(text_edit);
+
+                ui.add_space(2.0);
+
+                if ui.button("Add").clicked() {
+                    if !self.input.is_empty() {
+                        self.tasks.push(self.input.clone());
+                        self.input.clear();
+                    }
+                }
             });
+                ui.separator();
 
-            ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                self.value += 1.0;
-            }
+                let mut to_delete = Vec::new();
+                for (index, task) in self.tasks.iter().enumerate() {
+                    ui.horizontal(|ui| {
+                        ui.label(task);
+                        if ui.button("Delete").clicked() {
+                            to_delete.push(index);
+                        }
+                    });
+                }
 
-            ui.separator();
-
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/main/",
-                "Source code."
-            ));
-
+                for index in to_delete.into_iter().rev() {
+                    self.tasks.remove(index);
+                }
+            });
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 powered_by_egui_and_eframe(ui);
                 egui::warn_if_debug_build(ui);
